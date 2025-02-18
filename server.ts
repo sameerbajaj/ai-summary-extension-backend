@@ -15,23 +15,21 @@ app.use(cors({
 app.use(express.json());
 
 // MongoDB connection
-const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://sameerbajaj24:<db_password>@cluster0.gtyn8.mongodb.net/?retryWrites=true&w=majority';
+const mongoUri = process.env.MONGODB_URI;
 const dbName = 'ai_summary_extension';
 
 // Gemini API setup
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
+// Initialize MongoDB connection
 let mongoClient: MongoClient | null = null;
 
-async function connectToMongo() {
-  try {
-    mongoClient = new MongoClient(mongoUri);
+async function getMongoClient() {
+  if (!mongoClient) {
+    mongoClient = new MongoClient(mongoUri!);
     await mongoClient.connect();
-    console.log('Connected to MongoDB');
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    process.exit(1);
   }
+  return mongoClient;
 }
 
 // Middleware to verify Google OAuth token
@@ -90,16 +88,15 @@ app.post('/api/generate-summary', verifyGoogleToken, async (req, res) => {
     const data = await response.json();
     
     // Store summary in MongoDB
-    if (mongoClient) {
-      const db = mongoClient.db(dbName);
-      await db.collection('summaries').insertOne({
-        userId,
-        email,
-        text,
-        summary: data.candidates[0].content.parts[0].text,
-        timestamp: new Date()
-      });
-    }
+    const client = await getMongoClient();
+    const db = client.db(dbName);
+    await db.collection('summaries').insertOne({
+      userId,
+      email,
+      text,
+      summary: data.candidates[0].content.parts[0].text,
+      timestamp: new Date()
+    });
 
     res.json({ summary: data.candidates[0].content.parts[0].text });
   } catch (error) {
@@ -108,9 +105,17 @@ app.post('/api/generate-summary', verifyGoogleToken, async (req, res) => {
   }
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
-  await connectToMongo();
-  console.log(`Server running on port ${PORT}`);
-}); 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Only start the server if we're not in a Vercel environment
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+export default app; 

@@ -2,24 +2,29 @@
   "name": "ai-summary-extension-backend",
   "version": "1.0.0",
   "description": "Backend server for AI Summary Chrome Extension",
-  "main": "dist/server.js",
+  "main": "server.ts",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
+    "start": "ts-node server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts"
+    "vercel-build": "echo hello",
+    "dev": "ts-node-dev --respawn --transpile-only server.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "google-auth-library": "^9.0.0",
-    "mongodb": "^5.1.0"
+    "mongodb": "^5.1.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.13",
     "@types/express": "^4.17.17",
     "@types/node": "^18.15.0",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^4.9.5"
+    "ts-node-dev": "^2.0.0"
   }
 } 
