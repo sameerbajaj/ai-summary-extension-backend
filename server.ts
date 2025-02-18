@@ -8,8 +8,8 @@ dotenv.config();
 
 const app = express();
 app.use(cors({
-  origin: ['chrome-extension://jfbnkillpllpdeepbbllfcknebhcjjp'],
-  methods: ['POST'],
+  origin: /^chrome-extension:\/\/.*$/,
+  methods: ['POST', 'GET'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
