@@ -41,18 +41,20 @@ async function verifyGoogleToken(req: express.Request, res: express.Response, ne
 
   try {
     const token = authHeader.split(' ')[1];
-    const auth = new GoogleAuth();
-    const client = await auth.getIdTokenClient(process.env.GOOGLE_CLIENT_ID!);
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
-    const payload = ticket.getPayload();
-    if (!payload) {
-      throw new Error('Invalid token payload');
+    
+    // Validate access token
+    const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${token}`);
+    if (!response.ok) {
+      throw new Error('Invalid token');
     }
-    req.body.userId = payload.sub; // Google user ID
-    req.body.email = payload.email;
+    
+    const data = await response.json();
+    if (!data.email) {
+      throw new Error('Token does not contain email');
+    }
+    
+    req.body.userId = data.sub;
+    req.body.email = data.email;
     next();
   } catch (error) {
     console.error('Token verification error:', error);
