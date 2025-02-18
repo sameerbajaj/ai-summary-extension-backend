@@ -67,7 +67,13 @@ app.post('/api/generate-summary', verifyGoogleToken, async (req, res) => {
   try {
     const { text, userId, email } = req.body;
 
-    // Call Gemini API
+    // Trim and limit text length to avoid timeouts
+    const maxLength = 4000;
+    const trimmedText = text.length > maxLength 
+      ? text.substring(0, maxLength) + '...'
+      : text;
+
+    // Call Gemini API with optimized settings
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
       method: 'POST',
       headers: {
@@ -77,9 +83,15 @@ app.post('/api/generate-summary', verifyGoogleToken, async (req, res) => {
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `Please provide a concise summary of the following text: ${text}`
+            text: `Provide a very concise summary of this text (max 250 words): ${trimmedText}`
           }]
-        }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 1024,
+          topP: 0.8,
+          topK: 40
+        }
       })
     });
 
@@ -88,19 +100,22 @@ app.post('/api/generate-summary', verifyGoogleToken, async (req, res) => {
     }
 
     const data = await response.json();
-    
-    // Store summary in MongoDB
-    const client = await getMongoClient();
-    const db = client.db(dbName);
-    await db.collection('summaries').insertOne({
-      userId,
-      email,
-      text,
-      summary: data.candidates[0].content.parts[0].text,
-      timestamp: new Date()
+    const summary = data.candidates[0].content.parts[0].text;
+
+    // Store summary in MongoDB asynchronously
+    getMongoClient().then(client => {
+      const db = client.db(dbName);
+      db.collection('summaries').insertOne({
+        userId,
+        email,
+        text: trimmedText,
+        summary,
+        timestamp: new Date()
+      }).catch(err => console.error('MongoDB error:', err));
     });
 
-    res.json({ summary: data.candidates[0].content.parts[0].text });
+    // Send response immediately without waiting for MongoDB
+    res.json({ summary });
   } catch (error) {
     console.error('Summary generation error:', error);
     res.status(500).json({ error: 'Failed to generate summary' });

@@ -11,5 +11,11 @@
       "src": "/api/(.*)",
       "dest": "server.ts"
     }
-  ]
+  ],
+  "functions": {
+    "api/generate-summary": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
 } 
